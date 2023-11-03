@@ -41,7 +41,8 @@ class AbstractScoringSystem(BaseEstimator, ClassifierMixin):
         """
         if self.threshold is None:
             raise NotFittedError()
-        return expit(self.threshold - X @ self.scores)
+        proba_true = expit(self.threshold - X @ self.scores)
+        return np.vstack([1 - proba_true, proba_true]).T
 
     def predict(self, X):
         if self.threshold is None:

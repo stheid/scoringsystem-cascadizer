@@ -22,6 +22,8 @@ class AbstractScoringSystem(BaseEstimator, ClassifierMixin):
     def fit(self, X, y, scores: np.array):
         """
 
+        :param X: Data
+        :param y: labels
         :param scores: full array of scores for each feature. Disabled features must have a score of 0
         """
         clf = DecisionTreeClassifier(max_depth=1, criterion=self.criterion)
@@ -31,6 +33,12 @@ class AbstractScoringSystem(BaseEstimator, ClassifierMixin):
         return self
 
     def predict_proba(self, X):
+        """
+
+        :param X:
+        :return: Probability estimate by using sigmoid function and interpreting scores as logits.
+        This might not be a good idea if the scores have not been fitted for that purpose initially!
+        """
         if self.threshold is None:
             raise NotFittedError()
         return expit(self.threshold - X @ self.scores)

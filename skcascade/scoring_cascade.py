@@ -65,6 +65,11 @@ class ScoringCascade(BaseEstimator, ClassifierMixin):
         if self.cascade is None:
             raise NotFittedError()
         self.cascade[stage].predict(X)
+        
+    def predict_proba(self, X, stage=-1):
+        if self.cascade is None:
+            raise NotFittedError()
+        self.cascade[stage].predict_proba(X)
 
     @staticmethod
     def _mask_scores(scores, features):

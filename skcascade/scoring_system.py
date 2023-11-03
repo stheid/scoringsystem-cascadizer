@@ -54,7 +54,7 @@ class AbstractScoringSystem(BaseEstimator, ClassifierMixin):
         if self.threshold is None:
             raise NotFittedError()
         total_scores, score_freqs = np.unique(X, return_counts=True)
-        entropy_values = entropy(np.array(self.predict_proba(total_scores)), base=2)
+        entropy_values = entropy(expit(self.threshold - total_scores), base=2)
         return np.sum((score_freqs / X.size) * entropy_values)
 
     @property
@@ -62,3 +62,17 @@ class AbstractScoringSystem(BaseEstimator, ClassifierMixin):
         if self.threshold is None:
             raise NotFittedError()
         return np.count_nonzero(self.scores)
+
+
+if __name__ == '__main__':
+    from pprint import pprint
+    import pandas as pd
+
+    scoring_system = np.array([1, 1, 1, 0, 0, 1, 0, 1, 0])
+
+    df = pd.read_csv("../data/breastcancer_processed.csv")
+    X_ = df.loc[:, df.columns != 'Benign']
+    y_ = df.Benign
+
+    clf = AbstractScoringSystem().fit(X_, y_, scores=scoring_system)
+    pprint(clf._expected_entropy(X_))

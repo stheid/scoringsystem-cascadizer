@@ -59,7 +59,7 @@ class ScoringCascade(BaseEstimator, ClassifierMixin):
 
             current_features = set(np.flatnonzero(best_model.scores))
 
-        return optimal_models
+        return list(reversed(optimal_models))
 
     def predict_proba(self, X, stage=-1):
         if self.cascade is None:

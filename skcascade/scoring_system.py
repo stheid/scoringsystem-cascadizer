@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.special import expit
+from scipy.stats import entropy
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.exceptions import NotFittedError
 from sklearn.tree import DecisionTreeClassifier
@@ -48,6 +49,13 @@ class AbstractScoringSystem(BaseEstimator, ClassifierMixin):
         if self.threshold is None:
             raise NotFittedError()
         return np.array(self.threshold <= X @ self.scores, dtype=int)
+
+    def _expected_entropy(self, X):
+        if self.threshold is None:
+            raise NotFittedError()
+        total_scores, score_freqs = np.unique(X, return_counts=True)
+        entropy_values = entropy(np.array(self.predict_proba(total_scores)), base=2)
+        return np.sum((score_freqs / X.size) * entropy_values)
 
     @property
     def complexity(self):

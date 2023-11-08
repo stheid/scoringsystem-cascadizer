@@ -27,7 +27,7 @@ class AbstractScoringSystem(BaseEstimator, ClassifierMixin):
         :param scores: full array of scores for each feature. Disabled features must have a score of 0
         """
         self.scores = scores
-        self.regressor = IsotonicRegression()
+        self.regressor = IsotonicRegression(y_min=0.0, y_max=1.0, increasing=True, out_of_bounds="clip")
         self.regressor.fit(np.array(X @ scores).reshape(-1, 1), y)
         return self
 

@@ -1,9 +1,8 @@
 import numpy as np
-from scipy.special import expit
 from scipy.stats import entropy
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.exceptions import NotFittedError
-from sklearn.tree import DecisionTreeClassifier
+from sklearn.isotonic import IsotonicRegression
 
 
 class AbstractScoringSystem(BaseEstimator, ClassifierMixin):
@@ -15,10 +14,10 @@ class AbstractScoringSystem(BaseEstimator, ClassifierMixin):
         self.criterion = criterion
 
         self.scores = None
-        self.threshold = None
+        self.regressor = None
 
     def __repr__(self, **kwargs):
-        return f"ScoringSystem(scores={self.scores}, threshold={self.threshold})"
+        return f"ScoringSystem(scores={self.scores})"
 
     def fit(self, X, y, scores: np.array):
         """
@@ -27,10 +26,9 @@ class AbstractScoringSystem(BaseEstimator, ClassifierMixin):
         :param y: labels
         :param scores: full array of scores for each feature. Disabled features must have a score of 0
         """
-        clf = DecisionTreeClassifier(max_depth=1, criterion=self.criterion)
-        clf.fit(np.array(X @ scores).reshape(-1, 1), y)
         self.scores = scores
-        self.threshold = clf.tree_.threshold[0]
+        self.regressor = IsotonicRegression()
+        self.regressor.fit(np.array(X @ scores).reshape(-1, 1), y)
         return self
 
     def predict_proba(self, X):
@@ -40,26 +38,27 @@ class AbstractScoringSystem(BaseEstimator, ClassifierMixin):
         :return: Probability estimate by using sigmoid function and interpreting scores as logits.
         This might not be a good idea if the scores have not been fitted for that purpose initially!
         """
-        if self.threshold is None:
+        if self.regressor is None:
             raise NotFittedError()
-        proba_true = expit(self.threshold - X @ self.scores)
-        return np.vstack([1 - proba_true, proba_true]).T
+        proba_true = self.regressor.transform(X @ self.scores)
+        proba = np.vstack([1 - proba_true, proba_true]).T
+        return proba
 
     def predict(self, X):
-        if self.threshold is None:
+        if self.regressor is None:
             raise NotFittedError()
-        return np.array(self.threshold <= X @ self.scores, dtype=int)
+        return self.predict_proba(X @ self.scores).argmax(axis=1)
 
     def _expected_entropy(self, X):
-        if self.threshold is None:
+        if self.regressor is None:
             raise NotFittedError()
-        total_scores, score_freqs = np.unique(X, return_counts=True)
-        entropy_values = entropy(expit(self.threshold - total_scores), base=2)
+        total_scores, score_freqs = np.unique(X @ self.scores, return_counts=True)
+        entropy_values = entropy(self.regressor.transform(total_scores), base=2)
         return np.sum((score_freqs / X.size) * entropy_values)
 
     @property
     def complexity(self):
-        if self.threshold is None:
+        if self.regressor is None:
             raise NotFittedError()
         return np.count_nonzero(self.scores)
 
@@ -75,4 +74,5 @@ if __name__ == '__main__':
     y_ = df.Benign
 
     clf = AbstractScoringSystem().fit(X_, y_, scores=scoring_system)
-    pprint(clf._expected_entropy(X_))
+    pprint(clf)
+    print(clf._expected_entropy(X_))

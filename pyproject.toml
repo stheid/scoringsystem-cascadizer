@@ -14,6 +14,17 @@ pandas = "^2.1.2"
 scipy = "^1.11.3"
 
 
+[tool.poetry.group.dev.dependencies]
+black = "^23.11.0"
+
+
+[tool.poetry.group.experiments.dependencies]
+networkx = "^3.2.1"
+tqdm = "^4.66.1"
+matplotlib = "^3.8.2"
+seaborn = "^0.13.0"
+pyvis = "^0.3.2"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

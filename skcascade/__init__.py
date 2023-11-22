@@ -1,1 +1,2 @@
 from .scoring_cascade import ScoringCascade
+from .scoring_system import AbstractScoringSystem

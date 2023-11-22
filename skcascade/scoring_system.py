@@ -10,25 +10,29 @@ class AbstractScoringSystem(BaseEstimator, ClassifierMixin):
     this model only implements partial fitting capabilities. It can only fit the threshold but not the scores
     """
 
-    def __init__(self, criterion="entropy"):
+    def __init__(self, scores, criterion="entropy"):
+        """
+        :param scores: full array of scores for each feature. Disabled features must have a score of 0
+        """
         self.criterion = criterion
+        self.scores = scores
 
-        self.scores = None
         self.regressor = None
+        self.scores_ = np.array(scores)
 
     def __repr__(self, **kwargs):
         return f"ScoringSystem(scores={self.scores})"
 
-    def fit(self, X, y, scores: np.array):
+    def fit(self, X, y):
         """
 
         :param X: Data
         :param y: labels
-        :param scores: full array of scores for each feature. Disabled features must have a score of 0
         """
-        self.scores = scores
+        if X.shape[1] != self.scores_.shape[0]:
+            raise ValueError("scores are not consistent to the provided data")
         self.regressor = IsotonicRegression(y_min=0.0, y_max=1.0, increasing=True, out_of_bounds="clip")
-        self.regressor.fit(np.array(X @ scores).reshape(-1, 1), y)
+        self.regressor.fit(np.array(X @ self.scores_).reshape(-1, 1), y)
         return self
 
     def predict_proba(self, X):
@@ -40,27 +44,28 @@ class AbstractScoringSystem(BaseEstimator, ClassifierMixin):
         """
         if self.regressor is None:
             raise NotFittedError()
-        proba_true = self.regressor.transform(X @ self.scores)
+        proba_true = self.regressor.transform(X @ self.scores_)
         proba = np.vstack([1 - proba_true, proba_true]).T
         return proba
 
     def predict(self, X):
         if self.regressor is None:
             raise NotFittedError()
-        return self.predict_proba(X @ self.scores).argmax(axis=1)
+        return self.predict_proba(X).argmax(axis=1)
 
     def _expected_entropy(self, X):
         if self.regressor is None:
             raise NotFittedError()
-        total_scores, score_freqs = np.unique(X @ self.scores, return_counts=True)
-        entropy_values = entropy(self.regressor.transform(total_scores), base=2)
+        total_scores, score_freqs = np.unique(X @ self.scores_, return_counts=True)
+        true_proba = self.regressor.transform(total_scores)
+        entropy_values = entropy([1 - true_proba, true_proba], base=2)
         return np.sum((score_freqs / X.size) * entropy_values)
 
     @property
     def complexity(self):
         if self.regressor is None:
             raise NotFittedError()
-        return np.count_nonzero(self.scores)
+        return np.count_nonzero(self.scores_)
 
 
 if __name__ == '__main__':
@@ -73,6 +78,6 @@ if __name__ == '__main__':
     X_ = df.loc[:, df.columns != 'Benign']
     y_ = df.Benign
 
-    clf = AbstractScoringSystem().fit(X_, y_, scores=scoring_system)
+    clf = AbstractScoringSystem(scoring_system).fit(X_, y_)
     pprint(clf)
     print(clf._expected_entropy(X_))
